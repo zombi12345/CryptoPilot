@@ -1,0 +1,14 @@
+aiogram==3.13.0
+openai==1.54.0
+httpx==0.27.2
+python-dotenv==1.0.1
+asyncpg==0.29.0
+flask==3.0.3
+gunicorn==22.0.0
+pandas==2.2.2
+pandas-ta==0.3.14b0
+ccxt==4.4.26
+simpleeval==1.0.3
+reportlab==4.2.2
+matplotlib==3.9.2
+Pillow==10.4.0

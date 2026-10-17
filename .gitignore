@@ -1,0 +1,47 @@
+# Секреты
+.env
+.env.local
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+venv/
+env/
+.venv/
+build/
+dist/
+*.egg-info/
+
+# Кеш
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Данные
+*.db
+*.sqlite
+*.sqlite3
+backups/
+logs/
+
+# PDF и файлы
+*.pdf
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# ОС
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Служебное
+project_dump.txt
+download_*.py
