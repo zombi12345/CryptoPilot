@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 from loader import bot, dp, setup_bot, shutdown_bot
-from handlers import start_router, menu_router, stubs_router
+from handlers import start_router, menu_router, analysis_router, stubs_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,6 +17,7 @@ async def main():
 
     dp.include_router(start_router)
     dp.include_router(menu_router)
+    dp.include_router(analysis_router)
     dp.include_router(stubs_router)
 
     try:

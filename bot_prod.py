@@ -4,7 +4,7 @@ import asyncio
 from flask import Flask, request
 from aiogram.types import Update
 from loader import bot, dp, setup_bot
-from handlers import start_router, menu_router, stubs_router
+from handlers import start_router, menu_router, analysis_router, stubs_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,6 +16,7 @@ app = Flask(__name__)
 
 dp.include_router(start_router)
 dp.include_router(menu_router)
+dp.include_router(analysis_router)
 dp.include_router(stubs_router)
 
 loop = asyncio.new_event_loop()
