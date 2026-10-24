@@ -3,7 +3,11 @@ import logging
 import sys
 from loader import bot, dp, setup_bot, shutdown_bot
 from database import init_db
-from handlers import start_router, menu_router, analysis_router, books_router, strategies_router, stubs_router
+from handlers import (
+    start_router, menu_router, analysis_router, books_router,
+    strategies_router, trading_router, admin_router,
+    settings_router, help_router, stubs_router,
+)
 from config import ADMINS
 
 logging.basicConfig(
@@ -36,6 +40,10 @@ async def main():
     dp.include_router(analysis_router)
     dp.include_router(books_router)
     dp.include_router(strategies_router)
+    dp.include_router(trading_router)
+    dp.include_router(admin_router)
+    dp.include_router(settings_router)
+    dp.include_router(help_router)
     dp.include_router(stubs_router)
 
     try:
