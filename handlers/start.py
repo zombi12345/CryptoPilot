@@ -4,6 +4,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from states import StartStates
 from keyboards.main import main_menu_keyboard, main_reply_keyboard
+from database import create_user_if_missing, set_agreed
 from config import ADMINS
 
 router = Router()
@@ -13,7 +14,11 @@ router = Router()
 async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
-    is_admin = user_id in ADMINS
+    await create_user_if_missing(
+        user_id,
+        message.from_user.username or "",
+        message.from_user.first_name or "",
+    )
 
     text = (
         "Добро пожаловать в Trading Bot.\n\n"
@@ -42,6 +47,12 @@ async def cmd_start(message: Message, state: FSMContext):
 async def agree_yes(callback, state: FSMContext):
     await state.clear()
     user_id = callback.from_user.id
+    await create_user_if_missing(
+        user_id,
+        callback.from_user.username or "",
+        callback.from_user.first_name or "",
+    )
+    await set_agreed(user_id)
     is_admin = user_id in ADMINS
     await callback.message.edit_text("Согласовано.\n\nГлавное меню:")
     await callback.message.answer(
@@ -66,6 +77,11 @@ async def agree_no(callback, state: FSMContext):
 async def cmd_menu(message: Message, state: FSMContext):
     await state.clear()
     user_id = message.from_user.id
+    await create_user_if_missing(
+        user_id,
+        message.from_user.username or "",
+        message.from_user.first_name or "",
+    )
     is_admin = user_id in ADMINS
     await message.answer(
         "Главное меню:",

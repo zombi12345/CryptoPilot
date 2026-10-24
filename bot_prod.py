@@ -4,7 +4,8 @@ import asyncio
 from flask import Flask, request
 from aiogram.types import Update
 from loader import bot, dp, setup_bot
-from handlers import start_router, menu_router, analysis_router, stubs_router
+from database import init_db
+from handlers import start_router, menu_router, analysis_router, strategies_router, stubs_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,6 +18,7 @@ app = Flask(__name__)
 dp.include_router(start_router)
 dp.include_router(menu_router)
 dp.include_router(analysis_router)
+dp.include_router(strategies_router)
 dp.include_router(stubs_router)
 
 loop = asyncio.new_event_loop()
@@ -47,6 +49,7 @@ def home():
 
 
 async def setup_webhook():
+    await init_db()
     await setup_bot()
     external_url = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
     if not external_url:
