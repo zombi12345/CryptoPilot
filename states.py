@@ -39,3 +39,8 @@ class AdminStates(StatesGroup):
     waiting_user_id = State()
     waiting_broadcast = State()
     editing_limit = State()
+
+
+class BooksStates(StatesGroup):
+    waiting_file = State()
+    waiting_question = State()

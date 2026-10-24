@@ -5,6 +5,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 def main_menu_keyboard(user_id: int, is_admin: bool = False):
     kb = InlineKeyboardBuilder()
     kb.button(text="Анализ", callback_data="stub_analysis")
+    kb.button(text="Библиотека", callback_data="stub_books")
     kb.button(text="Стратегии", callback_data="stub_strategies")
     kb.button(text="Торговля", callback_data="stub_trading")
     kb.button(text="Настройки", callback_data="stub_settings")

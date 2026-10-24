@@ -3,7 +3,7 @@ import logging
 import sys
 from loader import bot, dp, setup_bot, shutdown_bot
 from database import init_db
-from handlers import start_router, menu_router, analysis_router, strategies_router, stubs_router
+from handlers import start_router, menu_router, analysis_router, books_router, strategies_router, stubs_router
 from config import ADMINS
 
 logging.basicConfig(
@@ -34,6 +34,7 @@ async def main():
     dp.include_router(start_router)
     dp.include_router(menu_router)
     dp.include_router(analysis_router)
+    dp.include_router(books_router)
     dp.include_router(strategies_router)
     dp.include_router(stubs_router)
 

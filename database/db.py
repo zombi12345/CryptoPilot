@@ -103,6 +103,16 @@ async def init_db():
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS book_summaries (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                filename TEXT NOT NULL,
+                summary JSONB NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(user_id, filename)
+            )
+        """)
     logger.info("БД инициализирована")
 
 
@@ -206,3 +216,59 @@ async def list_backtests(strategy_id):
             strategy_id,
         )
         return [dict(r) for r in rows]
+
+
+async def save_book_summary(user_id, filename, summary):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO book_summaries (user_id, filename, summary)
+            VALUES ($1, $2, $3::jsonb)
+            ON CONFLICT (user_id, filename) DO UPDATE SET summary = $3::jsonb
+        """, user_id, filename, json.dumps(summary))
+
+
+async def get_book_summary(user_id, filename):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT summary FROM book_summaries WHERE user_id = $1 AND filename = $2",
+            user_id, filename,
+        )
+        if not row:
+            return None
+        val = row["summary"]
+        if isinstance(val, str):
+            try:
+                return json.loads(val)
+            except Exception:
+                return None
+        return val
+
+
+async def get_all_book_summaries(user_id):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT filename, summary FROM book_summaries WHERE user_id = $1",
+            user_id,
+        )
+        out = {}
+        for r in rows:
+            val = r["summary"]
+            if isinstance(val, str):
+                try:
+                    val = json.loads(val)
+                except Exception:
+                    continue
+            out[r["filename"]] = val
+        return out
+
+
+async def delete_book_summary(user_id, filename):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "DELETE FROM book_summaries WHERE user_id = $1 AND filename = $2",
+            user_id, filename,
+        )

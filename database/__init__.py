@@ -3,6 +3,7 @@ from database.db import (
     create_user_if_missing, set_agreed, get_user,
     list_strategies, get_strategy, create_strategy, toggle_strategy, delete_strategy,
     save_backtest, list_backtests,
+    save_book_summary, get_book_summary, get_all_book_summaries, delete_book_summary,
 )
 
 __all__ = [
@@ -10,4 +11,5 @@ __all__ = [
     "create_user_if_missing", "set_agreed", "get_user",
     "list_strategies", "get_strategy", "create_strategy", "toggle_strategy", "delete_strategy",
     "save_backtest", "list_backtests",
+    "save_book_summary", "get_book_summary", "get_all_book_summaries", "delete_book_summary",
 ]
