@@ -4,12 +4,14 @@ import asyncio
 from flask import Flask, request
 from aiogram.types import Update
 from loader import bot, dp, setup_bot
-from database import init_db, init_payments_db
+from database import init_db, init_payments_db, init_trader_db, init_portfolio_db, init_daily_bonus_db, init_shop_db, init_referral_db, init_trade_mode_db, init_ai_limits_db
 from services.scheduler import start_scheduler
 from handlers import (
     start_router, menu_router, analysis_router, books_router,
     strategies_router, api_keys_router, trading_router, news_router,
-    payment_router, admin_router, ads_display_router, settings_router, help_router, stubs_router,
+    payment_router, admin_router, ads_display_router, journal_router,
+    portfolio_router, bonus_router, shop_router, referral_router,
+    settings_router, help_router, stubs_router,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -28,6 +30,11 @@ dp.include_router(news_router)
 dp.include_router(payment_router)
 dp.include_router(admin_router)
 dp.include_router(ads_display_router)
+dp.include_router(journal_router)
+dp.include_router(portfolio_router)
+dp.include_router(bonus_router)
+dp.include_router(shop_router)
+dp.include_router(referral_router)
 dp.include_router(settings_router)
 dp.include_router(help_router)
 dp.include_router(stubs_router)
@@ -58,6 +65,13 @@ def home():
 async def setup_webhook():
     await init_db()
     await init_payments_db()
+    await init_trader_db()
+    await init_portfolio_db()
+    await init_daily_bonus_db()
+    await init_shop_db()
+    await init_referral_db()
+    await init_trade_mode_db()
+    await init_ai_limits_db()
     await setup_bot()
 
     from services.auto_trader import auto_trade_worker

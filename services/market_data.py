@@ -4,8 +4,7 @@ import ccxt.async_support as ccxt
 
 logger = logging.getLogger(__name__)
 
-
-async def fetch_ohlcv(symbol, timeframe="1h", limit=1000, exchange_name="binance"):
+async def fetch_ohlcv(symbol, timeframe="1h", limit=1000, exchange_name="bybit"):
     exchange = getattr(ccxt, exchange_name)({
         "enableRateLimit": True,
         "options": {"defaultType": "spot"},
