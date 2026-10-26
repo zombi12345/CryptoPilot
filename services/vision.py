@@ -1,13 +1,14 @@
 import base64
 import logging
-from services.ai_client import chat_json
-from services.rag import get_book_context, list_books
-from services.summarizer import format_all_summaries
-from database import get_all_book_summaries
+from services.ai_client import chat, chat_json
+# RAG отключен для деплоя
+# from services.rag import get_book_context, list_books
 
 logger = logging.getLogger(__name__)
 
 VISION_PROMPT = """Ты - профессиональный технический аналитик. На фото - скриншот графика цены криптовалюты.
+
+Задача: ДЕТАЛЬНО распознать график и дать обоснованный прогноз.
 
 Ответ строго в JSON:
 {
@@ -17,7 +18,10 @@ VISION_PROMPT = """Ты - профессиональный технически�
   "current_price": "число или null",
   "trend": "up / down / sideways / unknown",
   "trend_reason": "почему такой тренд",
-  "key_levels": {"support": ["уровень1"], "resistance": ["уровень1"]},
+  "key_levels": {
+    "support": ["уровень1"],
+    "resistance": ["уровень1"]
+  },
   "patterns": "какие паттерны видно",
   "candles": "что видно по свечам",
   "indicators": "какие индикаторы и значения",
@@ -28,8 +32,14 @@ VISION_PROMPT = """Ты - профессиональный технически�
     "direction": "up / down / sideways",
     "confidence": 0-100,
     "reasoning": ["пункт 1", "пункт 2", "пункт 3", "пункт 4", "пункт 5"],
-    "scenarios": {"bullish": "что для роста", "bearish": "что для падения"},
-    "targets": {"up": "цель роста", "down": "цель падения"},
+    "scenarios": {
+      "bullish": "что для роста",
+      "bearish": "что для падения"
+    },
+    "targets": {
+      "up": "цель роста",
+      "down": "цель падения"
+    },
     "invalidation": "при каком уровне отмена",
     "risks": "конкретные риски"
   } или null
@@ -56,6 +66,7 @@ def _to_str(val) -> str:
         return " ".join(_to_str(x) for x in val)
     return str(val)
 
+
 async def analyze_photo(image_bytes: bytes, clarification: str = "", user_id: int = None) -> dict:
     b64 = base64.b64encode(image_bytes).decode()
     user_text = "Детально проанализируй график. Не пиши общих фраз."
@@ -74,80 +85,7 @@ async def analyze_photo(image_bytes: bytes, clarification: str = "", user_id: in
     if not result:
         return {"error": "AI не ответил"}
 
-    if result.get("enough_data") and user_id:
-        query_parts = [
-            _to_str(result.get("ticker")),
-            _to_str(result.get("trend")),
-            _to_str(result.get("patterns")),
-            _to_str(result.get("indicators")),
-            _to_str(result.get("candles")),
-            _to_str(result.get("volume")),
-            _to_str(result.get("description")),
-        ]
-        query = " ".join(p for p in query_parts if p)
-        books = list_books(user_id)
-        summaries = await get_all_book_summaries(user_id)
-        summaries_text = format_all_summaries(summaries) if summaries else ""
-        chunks_ctx = get_book_context(user_id, query, top_k=20) if query.strip() else ""
-
-        if summaries_text or chunks_ctx:
-            result["book_context_used"] = True
-            result["book_sources"] = list(summaries.keys()) if summaries else []
-            result["books_available"] = [b["filename"] for b in books]
-
-            system_prompt = (
-                "Ты - технический аналитик. У тебя есть:\n"
-                "1. Данные с графика.\n"
-                "2. КОНСПЕКТЫ ВСЕХ книг.\n"
-                "3. Выдержки из книг по ситуации.\n\n"
-                "ГЛАВНОЕ ПРАВИЛО: используй МАКСИМУМ книг. "
-                "Если правило в нескольких книгах - упомяни все. "
-                "Если противоречат - отметь.\n\n"
-                "ТРЕБОВАНИЯ:\n"
-                "1. reasoning - МАССИВ из 5-8 пунктов, каждый со ссылкой [книга].\n"
-                "2. book_rules_applied - все правила из книг.\n"
-                "3. books_used - список ВСЕХ книг, использованных.\n"
-                "4. Не пиши общих фраз.\n\n"
-                "Ответ в JSON:\n"
-                "{\n"
-                "  \"forecast\": {\n"
-                "    \"direction\": \"up/down/sideways\",\n"
-                "    \"confidence\": 0-100,\n"
-                "    \"reasoning\": [\"пункт 1 [книга]\", \"пункт 2 [книга]\"],\n"
-                "    \"book_rules_applied\": [\"правило 1 [книга]\"],\n"
-                "    \"books_used\": [\"книга1.pdf\", \"книга2.pdf\"],\n"
-                "    \"conflicts\": \"если противоречат\",\n"
-                "    \"scenarios\": {\"bullish\": \"...\", \"bearish\": \"...\"},\n"
-                "    \"targets\": {\"up\": \"...\", \"down\": \"...\"},\n"
-                "    \"invalidation\": \"...\",\n"
-                "    \"risks\": \"...\"\n"
-                "  }\n"
-                "}"
-            )
-            user_msg = (
-                f"ГРАФИК:\n"
-                f"Тикер: {result.get('ticker')}\n"
-                f"Таймфрейм: {result.get('timeframe')}\n"
-                f"Цена: {result.get('current_price')}\n"
-                f"Тренд: {result.get('trend')} ({result.get('trend_reason')})\n"
-                f"Уровни: {result.get('key_levels')}\n"
-                f"Паттерны: {result.get('patterns')}\n"
-                f"Свечи: {result.get('candles')}\n"
-                f"Индикаторы: {result.get('indicators')}\n"
-                f"Объёмы: {result.get('volume')}\n\n"
-                f"ДОСТУПНЫЕ КНИГИ: {', '.join(b['filename'] for b in books)}\n\n"
-                f"КОНСПЕКТЫ ВСЕХ КНИГ:\n{summaries_text}\n\n"
-                f"ВЫДЕРЖКИ:\n{chunks_ctx}\n\n"
-                f"Дай прогноз. Используй МАКСИМУМ книг."
-            )
-            enrich_messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_msg},
-            ]
-            enriched = await chat_json(enrich_messages, max_tokens=2500)
-            if enriched and enriched.get("forecast"):
-                result["forecast"] = enriched["forecast"]
-                result["enriched_by_books"] = True
+    # RAG-обогащение временно отключено (нет chromadb на сервере)
     return result
 
 
@@ -201,11 +139,6 @@ def format_forecast(result: dict) -> str:
                 parts.append(f"  {i}. {r}")
         else:
             parts.append(f"  {reasoning}")
-
-    books_used = f.get("books_used")
-    if books_used:
-        parts.append("")
-        parts.append(f"Книги: {', '.join(books_used)}")
 
     parts.append("")
     parts.append("Не является инвестиционной рекомендацией.")
@@ -265,48 +198,6 @@ def format_details(result: dict) -> str:
                 parts.append(f"  {i}. {r}")
         else:
             parts.append(f"  {reasoning}")
-
-    book_rules = f.get("book_rules_applied")
-    if book_rules:
-        parts.append("")
-        parts.append("ПРАВИЛА ИЗ КНИГ:")
-        for r in book_rules:
-            parts.append(f"  - {r}")
-
-    books_used = f.get("books_used")
-    if books_used:
-        parts.append("")
-        parts.append(f"ИСПОЛЬЗОВАНЫ: {', '.join(books_used)}")
-
-    if f.get("conflicts"):
-        parts.append("")
-        parts.append(f"ПРОТИВОРЕЧИЯ: {f['conflicts']}")
-
-    scenarios = f.get("scenarios") or {}
-    if scenarios:
-        parts.append("")
-        parts.append("СЦЕНАРИИ:")
-        if scenarios.get("bullish"):
-            parts.append(f"  Вверх: {scenarios['bullish']}")
-        if scenarios.get("bearish"):
-            parts.append(f"  Вниз: {scenarios['bearish']}")
-
-    targets = f.get("targets") or {}
-    if targets:
-        parts.append("")
-        parts.append("ЦЕЛИ:")
-        if targets.get("up"):
-            parts.append(f"  Вверх: {targets['up']}")
-        if targets.get("down"):
-            parts.append(f"  Вниз: {targets['down']}")
-
-    if f.get("invalidation"):
-        parts.append("")
-        parts.append(f"ОТМЕНА: {f['invalidation']}")
-
-    if f.get("risks"):
-        parts.append("")
-        parts.append(f"РИСКИ: {f['risks']}")
 
     parts.append("")
     parts.append("Не является инвестиционной рекомендацией.")
