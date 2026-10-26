@@ -2,7 +2,11 @@ import asyncio
 import logging
 import sys
 from loader import bot, dp, setup_bot, shutdown_bot
-from database import init_db, init_payments_db, init_trader_db, init_portfolio_db, init_daily_bonus_db, init_shop_db, init_referral_db
+from database import (
+    init_db, init_payments_db, init_trader_db, init_portfolio_db,
+    init_daily_bonus_db, init_shop_db, init_referral_db,
+    init_trade_mode_db, init_ai_limits_db
+)
 from services.scheduler import start_scheduler
 from handlers import (
     start_router, menu_router, analysis_router, books_router,
@@ -23,6 +27,9 @@ async def main():
     await init_daily_bonus_db()
     await init_shop_db()
     await init_referral_db()
+    await init_trade_mode_db()
+    await init_ai_limits_db()
+
     await setup_bot()
 
     dp.include_router(start_router)
@@ -45,10 +52,10 @@ async def main():
     dp.include_router(help_router)
     dp.include_router(stubs_router)
 
-    # Автоторговля отключена на Render (Binance блокирует IP)
-    # from services.auto_trader import auto_trade_worker
-    # asyncio.create_task(auto_trade_worker(bot))
     await start_scheduler(bot)
+
+    # ВАЖНО: удаляем старый webhook, чтобы polling работал
+    await bot.delete_webhook(drop_pending_updates=True)
 
     try:
         await dp.start_polling(bot)
@@ -56,5 +63,7 @@ async def main():
         await shutdown_bot()
 
 if __name__ == "__main__":
-    try: asyncio.run(main())
-    except KeyboardInterrupt: sys.exit(0)
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        sys.exit(0)

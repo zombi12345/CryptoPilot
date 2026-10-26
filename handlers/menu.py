@@ -6,7 +6,6 @@ from keyboards.main import (
     main_menu_keyboard, main_reply_keyboard, 
     trading_menu_kb, learning_menu_kb, activities_menu_kb, profile_menu_kb
 )
-from database import get_user
 from config import ADMINS
 from handlers.ads_display import show_ad_if_needed
 
@@ -19,6 +18,7 @@ async def safe_edit(msg, text, reply_markup=None, parse_mode="HTML"):
         else: await msg.edit_text(text, parse_mode=parse_mode)
     except Exception: pass
 
+# --- Reply-кнопки ---
 @router.message(F.text == "🏠 Главное меню")
 async def reply_menu(message: Message, state: FSMContext):
     await state.clear()
@@ -27,6 +27,34 @@ async def reply_menu(message: Message, state: FSMContext):
     await message.answer("Выбери раздел ниже 👇", reply_markup=main_reply_keyboard())
     await show_ad_if_needed(message, is_admin=user_id in ADMINS)
 
+@router.message(F.text == "📊 Анализ")
+async def reply_analysis(message: Message, state: FSMContext):
+    await state.clear()
+    from handlers.analysis import analysis_menu
+    class FakeCallback:
+        def __init__(self, msg, user): self.message = msg; self.from_user = user
+        async def answer(self, *args, **kwargs): pass
+    await analysis_menu(FakeCallback(message, message.from_user), state)
+
+@router.message(F.text == "💼 Торговля")
+async def reply_trading(message: Message, state: FSMContext):
+    await state.clear()
+    from handlers.trading import trading_menu
+    class FakeCallback:
+        def __init__(self, msg, user): self.message = msg; self.from_user = user
+        async def answer(self, *args, **kwargs): pass
+    await trading_menu(FakeCallback(message, message.from_user), state)
+
+@router.message(F.text == "🛒 Магазин")
+async def reply_shop(message: Message, state: FSMContext):
+    await state.clear()
+    from handlers.shop import shop_menu
+    class FakeCallback:
+        def __init__(self, msg, user): self.message = msg; self.from_user = user
+        async def answer(self, *args, **kwargs): pass
+    await shop_menu(FakeCallback(message, message.from_user))
+
+# --- Inline-кнопки ---
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: CallbackQuery, state: FSMContext):
     await state.clear()
