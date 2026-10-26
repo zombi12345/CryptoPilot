@@ -23,49 +23,43 @@ def rsi(series, period=14):
 
 
 def macd(series, fast=12, slow=26, signal=9):
-    ema_fast = ema(series, fast)
-    ema_slow = ema(series, slow)
-    macd_line = ema_fast - ema_slow
-    signal_line = ema(macd_line, signal)
-    hist = macd_line - signal_line
-    return macd_line, signal_line, hist
+    ef = ema(series, fast)
+    es = ema(series, slow)
+    m = ef - es
+    s = ema(m, signal)
+    return m, s, m - s
 
 
 def atr(high, low, close, period=14):
-    prev_close = close.shift(1)
-    tr = pd.concat([
-        high - low,
-        (high - prev_close).abs(),
-        (low - prev_close).abs(),
-    ], axis=1).max(axis=1)
+    pc = close.shift(1)
+    tr = pd.concat([high - low, (high - pc).abs(), (low - pc).abs()], axis=1).max(axis=1)
     return tr.ewm(alpha=1/period, adjust=False).mean()
 
 
 def bollinger(series, period=20, std=2):
     mid = sma(series, period)
-    stdev = series.rolling(period).std()
-    upper = mid + std * stdev
-    lower = mid - std * stdev
-    return upper, mid, lower
+    sd = series.rolling(period).std()
+    return mid + std * sd, mid, mid - std * sd
+
+
+def stoch(high, low, close, period=14):
+    lowest = low.rolling(period).min()
+    highest = high.rolling(period).max()
+    return 100 * (close - lowest) / (highest - lowest).replace(0, 1e-10)
 
 
 def compute_indicators(df, specs):
-    """
-    specs: [{"name": "RSI", "period": 14}, {"name": "EMA", "period": 50}, ...]
-    Возвращает df с колонками вида RSI_14, EMA_50, MACD_12_26_9, BB_20_2_UPPER и т.д.
-    Все индикаторы сдвинуты на 1 свечу (shift(1)), чтобы не было look-ahead bias.
-    """
     for spec in specs:
         name = spec.get("name", "").upper()
         if name == "RSI":
-            period = int(spec.get("period", 14))
-            df[f"RSI_{period}"] = rsi(df["close"], period).shift(1)
+            p = int(spec.get("period", 14))
+            df[f"RSI_{p}"] = rsi(df["close"], p).shift(1)
         elif name == "EMA":
-            period = int(spec.get("period", 20))
-            df[f"EMA_{period}"] = ema(df["close"], period).shift(1)
+            p = int(spec.get("period", 20))
+            df[f"EMA_{p}"] = ema(df["close"], p).shift(1)
         elif name == "SMA":
-            period = int(spec.get("period", 20))
-            df[f"SMA_{period}"] = sma(df["close"], period).shift(1)
+            p = int(spec.get("period", 20))
+            df[f"SMA_{p}"] = sma(df["close"], p).shift(1)
         elif name == "MACD":
             fast = int(spec.get("fast", 12))
             slow = int(spec.get("slow", 26))
@@ -74,13 +68,16 @@ def compute_indicators(df, specs):
             df[f"MACD_{fast}_{slow}_{sig}"] = m.shift(1)
             df[f"MACD_{fast}_{slow}_{sig}_SIGNAL"] = s.shift(1)
         elif name == "ATR":
-            period = int(spec.get("period", 14))
-            df[f"ATR_{period}"] = atr(df["high"], df["low"], df["close"], period).shift(1)
+            p = int(spec.get("period", 14))
+            df[f"ATR_{p}"] = atr(df["high"], df["low"], df["close"], p).shift(1)
         elif name == "BB":
-            period = int(spec.get("period", 20))
-            std = int(spec.get("std", 2))
-            u, m, l = bollinger(df["close"], period, std)
-            df[f"BB_{period}_{std}_UPPER"] = u.shift(1)
-            df[f"BB_{period}_{std}_MID"] = m.shift(1)
-            df[f"BB_{period}_{std}_LOWER"] = l.shift(1)
+            p = int(spec.get("period", 20))
+            sd = int(spec.get("std", 2))
+            u, m, l = bollinger(df["close"], p, sd)
+            df[f"BB_{p}_{sd}_UPPER"] = u.shift(1)
+            df[f"BB_{p}_{sd}_MID"] = m.shift(1)
+            df[f"BB_{p}_{sd}_LOWER"] = l.shift(1)
+        elif name == "STOCH":
+            p = int(spec.get("period", 14))
+            df[f"STOCH_{p}"] = stoch(df["high"], df["low"], df["close"], p).shift(1)
     return df

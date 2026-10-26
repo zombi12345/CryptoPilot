@@ -5,8 +5,8 @@ from loader import bot, dp, setup_bot, shutdown_bot
 from database import init_db
 from handlers import (
     start_router, menu_router, analysis_router, books_router,
-    strategies_router, trading_router, admin_router,
-    settings_router, help_router, stubs_router,
+    strategies_router, api_keys_router, trading_router, news_router,
+    admin_router, settings_router, help_router, stubs_router,
 )
 from config import ADMINS
 
@@ -40,11 +40,16 @@ async def main():
     dp.include_router(analysis_router)
     dp.include_router(books_router)
     dp.include_router(strategies_router)
+    dp.include_router(api_keys_router)
     dp.include_router(trading_router)
+    dp.include_router(news_router)
     dp.include_router(admin_router)
     dp.include_router(settings_router)
     dp.include_router(help_router)
     dp.include_router(stubs_router)
+
+    from services.auto_trader import auto_trade_worker
+    asyncio.create_task(auto_trade_worker(bot))
 
     try:
         await dp.start_polling(bot)

@@ -8,6 +8,7 @@ def main_menu_keyboard(user_id: int, is_admin: bool = False):
     kb.button(text="Библиотека", callback_data="stub_books")
     kb.button(text="Стратегии", callback_data="stub_strategies")
     kb.button(text="Торговля", callback_data="stub_trading")
+    kb.button(text="Новости", callback_data="stub_news")
     kb.button(text="Настройки", callback_data="stub_settings")
     kb.button(text="Помощь", callback_data="stub_help")
     if is_admin:
