@@ -74,8 +74,9 @@ async def setup_webhook():
     await init_ai_limits_db()
     await setup_bot()
 
-    from services.auto_trader import auto_trade_worker
-    asyncio.create_task(auto_trade_worker(bot))
+    # Автоторговля отключена на Render (Binance блокирует IP)
+    # from services.auto_trader import auto_trade_worker
+    # asyncio.create_task(auto_trade_worker(bot))
     await start_scheduler(bot)
 
     external_url = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
