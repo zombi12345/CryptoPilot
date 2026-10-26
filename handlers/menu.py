@@ -34,7 +34,6 @@ async def back_to_menu(callback: CallbackQuery, state: FSMContext):
     await safe_edit(callback.message, "📌 <b>Главное меню:</b>", reply_markup=main_menu_keyboard(user_id, user_id in ADMINS))
     await callback.answer()
 
-# --- ПОДМЕНЮ ---
 @router.callback_query(F.data == "menu_trading")
 async def menu_trading(callback: CallbackQuery):
     text = "📈 <b>ТРЕЙДИНГ</b>\n\nАнализ, торговля и учет твоих сделок."

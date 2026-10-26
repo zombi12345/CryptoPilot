@@ -33,7 +33,7 @@ async def referral_menu(callback: CallbackQuery):
     )
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⬅️ В меню", callback_data="back_to_menu")]
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_activities")]
     ])
     await safe_edit(callback.message, text, reply_markup=kb)
     await callback.answer()
