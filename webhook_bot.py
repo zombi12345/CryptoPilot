@@ -45,8 +45,9 @@ async def main():
     dp.include_router(help_router)
     dp.include_router(stubs_router)
 
-    from services.auto_trader import auto_trade_worker
-    asyncio.create_task(auto_trade_worker(bot))
+    # Автоторговля отключена на Render (Binance блокирует IP)
+    # from services.auto_trader import auto_trade_worker
+    # asyncio.create_task(auto_trade_worker(bot))
     await start_scheduler(bot)
 
     try:
