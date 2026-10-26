@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: tradingbot
+    name: cryptopilot
     env: python
     region: frankfurt
     plan: free
@@ -27,11 +27,9 @@ services:
         sync: false
       - key: N1N_API_KEY
         sync: false
-      - key: N1N_BASE_URL
-        value: https://api.n1n.ai/v1
-      - key: N1N_MODEL
-        value: gpt-4o-mini
-      - key: GEMINI_API_KEY
+      - key: FERNET_KEY
+        sync: false
+      - key: BARGO_API_KEY
         sync: false
       - key: FREE_MODE
-        value: "true"
+        value: "false"

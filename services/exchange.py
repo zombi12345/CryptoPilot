@@ -5,13 +5,11 @@ from database import get_exchange_keys
 
 logger = logging.getLogger(__name__)
 
-
 async def _get_creds(user_id, exchange_name, mode, market):
     keys = await get_exchange_keys(user_id, exchange_name, mode, market)
     if not keys:
         return None
     return decrypt(keys["api_key_enc"]), decrypt(keys["secret_enc"])
-
 
 async def _get_exchange(user_id, exchange_name, mode, market):
     creds = await _get_creds(user_id, exchange_name, mode, market)
@@ -27,13 +25,14 @@ async def _get_exchange(user_id, exchange_name, mode, market):
         "enableRateLimit": True,
         "options": {"defaultType": default_type},
     })
-    if mode == "testnet" and exchange_name.lower() == "binance":
-        ex.enable_demo_trading(True)
-    elif mode == "testnet":
-        ex.set_sandbox_mode(True)
+    
+    if mode == "testnet":
+        if exchange_name.lower() == "binance":
+            ex.enable_demo_trading(True)
+        else:
+            ex.set_sandbox_mode(True)
     
     return ex, None
-
 
 async def place_order(user_id, exchange_name, symbol, side, amount, price, leverage, sl, tp, mode="testnet", market="futures"):
     ex, err = await _get_exchange(user_id, exchange_name, mode, market)
@@ -48,7 +47,6 @@ async def place_order(user_id, exchange_name, symbol, side, amount, price, lever
             except Exception as e:
                 logger.warning(f"set_leverage: {e}")
 
-        # 1. Открываем позицию (без SL/TP)
         order = await ex.create_order(
             symbol=symbol,
             type="market",
@@ -56,7 +54,6 @@ async def place_order(user_id, exchange_name, symbol, side, amount, price, lever
             amount=amount,
         )
         
-        # 2. Отдельно ставим SL и TP (если Binance Futures)
         close_side = "sell" if side == "buy" else "buy"
         sl_id = None
         tp_id = None
@@ -86,7 +83,6 @@ async def place_order(user_id, exchange_name, symbol, side, amount, price, lever
             await ex.close()
         except Exception:
             pass
-
 
 async def fetch_positions(user_id, exchange_name, mode="testnet", market="futures"):
     ex, err = await _get_exchange(user_id, exchange_name, mode, market)
@@ -160,7 +156,6 @@ async def fetch_positions(user_id, exchange_name, mode="testnet", market="future
         except Exception:
             pass
 
-
 async def close_position(user_id, exchange_name, symbol, side, amount, mode="testnet", market="futures"):
     ex, err = await _get_exchange(user_id, exchange_name, mode, market)
     if err:
@@ -188,7 +183,6 @@ async def close_position(user_id, exchange_name, symbol, side, amount, mode="tes
         except Exception:
             pass
 
-
 async def test_keys(user_id, exchange_name, mode, market):
     ex, err = await _get_exchange(user_id, exchange_name, mode, market)
     if err:
@@ -214,18 +208,13 @@ async def fetch_balance_full(user_id, exchange_name, mode="testnet", market="fut
     try:
         bal = await ex.fetch_balance()
         total = bal.get("total", {})
-        
-        # Оставляем только те монеты, где баланс > 0
         coins = []
         for coin, amount in total.items():
             if amount and float(amount) > 0:
                 coins.append({"coin": coin, "amount": float(amount)})
-        
-        # Сортируем: USDT первый, остальные по убыванию
         coins.sort(key=lambda x: (x["coin"] != "USDT", -x["amount"]))
         return {"ok": True, "coins": coins}
     except Exception as e:
-        logger.error(f"fetch_balance_full: {e}")
         return {"ok": False, "error": str(e)}
     finally:
         try:
@@ -233,21 +222,18 @@ async def fetch_balance_full(user_id, exchange_name, mode="testnet", market="fut
         except Exception:
             pass
 
-
 async def transfer_spot_to_futures(user_id, exchange_name, mode, market, asset="USDT", amount=None):
     ex, err = await _get_exchange(user_id, exchange_name, mode, market)
     if err:
         return {"ok": False, "error": err}
 
     try:
-        # Если сумма не указана — берём весь свободный баланс
         if amount is None:
             bal = await ex.fetch_balance()
             amount = float(bal.get("free", {}).get(asset, 0))
             if amount <= 0:
                 return {"ok": False, "error": f"Нет свободного {asset} на споте"}
 
-        # Универсальный перевод: спот → фьючерсы (USDT-M)
         res = await ex.transfer(asset, amount, "spot", "future")
         return {"ok": True, "amount": amount, "result": res}
     except Exception as e:
