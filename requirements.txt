@@ -6,7 +6,7 @@ asyncpg==0.29.0
 flask==3.0.3
 gunicorn==22.0.0
 pandas==2.2.2
-pandas-ta==0.3.14b0
+pandas-ta-classic==0.8.32
 ccxt==4.4.26
 simpleeval==1.0.3
 reportlab==4.2.2
