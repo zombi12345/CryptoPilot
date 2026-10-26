@@ -30,29 +30,55 @@ async def reply_menu(message: Message, state: FSMContext):
 @router.message(F.text == "📊 Анализ")
 async def reply_analysis(message: Message, state: FSMContext):
     await state.clear()
-    from handlers.analysis import analysis_menu
-    class FakeCallback:
-        def __init__(self, msg, user): self.message = msg; self.from_user = user
-        async def answer(self, *args, **kwargs): pass
-    await analysis_menu(FakeCallback(message, message.from_user), state)
+    from database import check_and_increment_ai
+    can_use, current, limit = await check_and_increment_ai(message.from_user.id)
+    if not can_use:
+        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="💎 Купить подписку", callback_data="sub_menu")]])
+        return await message.answer(f"🚫 Лимит AI исчерпан ({current}/{limit}). Купи подписку Premium или обратись к админу.", reply_markup=kb)
+    await message.answer(f"📊 <b>АНАЛИЗ ГРАФИКОВ</b>\n\nИспользовано запросов: {current}/{limit}\n\nОтправь скриншот графика или /cancel", reply_markup=main_menu_keyboard(message.from_user.id, message.from_user.id in ADMINS), parse_mode="HTML")
+    from states import AnalysisStates
+    await state.set_state(AnalysisStates.waiting_photo)
 
 @router.message(F.text == "💼 Торговля")
 async def reply_trading(message: Message, state: FSMContext):
     await state.clear()
-    from handlers.trading import trading_menu
-    class FakeCallback:
-        def __init__(self, msg, user): self.message = msg; self.from_user = user
-        async def answer(self, *args, **kwargs): pass
-    await trading_menu(FakeCallback(message, message.from_user), state)
+    from database import get_user
+    user = await get_user(message.from_user.id)
+    is_paid = user.get("is_paid", False) if user else False
+    text = "💼 <b>ТОРГОВЛЯ</b>\n➖➖➖➖➖➖➖➖➖➖\n"
+    if not is_paid:
+        text += "⚠️ <b>Доступен только Demo (Testnet)</b>\n<i>Для перехода на реал нужна подписка Premium.</i>\n\n"
+    else:
+        text += "Режим: <b>Demo (Testnet)</b>\n\n"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💰 Баланс", callback_data="trade_balance")],
+        [InlineKeyboardButton(text="📊 Позиции", callback_data="trade_positions")],
+        [InlineKeyboardButton(text="📈 Открыть сделку", callback_data="trade_open")],
+        [InlineKeyboardButton(text="📜 История", callback_data="trade_history")],
+        [InlineKeyboardButton(text="🔑 API-ключи", callback_data="keys_menu")],
+        [InlineKeyboardButton(text="⬅️ В меню", callback_data="back_to_menu")],
+    ])
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(F.text == "🛒 Магазин")
 async def reply_shop(message: Message, state: FSMContext):
     await state.clear()
-    from handlers.shop import shop_menu
-    class FakeCallback:
-        def __init__(self, msg, user): self.message = msg; self.from_user = user
-        async def answer(self, *args, **kwargs): pass
-    await shop_menu(FakeCallback(message, message.from_user))
+    from database import get_user, get_pool
+    user = await get_user(message.from_user.id)
+    balance = user.get("balance_coins", 0) if user else 0
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        items = await conn.fetch("SELECT * FROM shop_items WHERE is_active = TRUE")
+    text = f"🛒 <b>МАГАЗИН</b>\n➖➖➖➖➖➖➖➖➖➖\n💰 Твой баланс: <b>{balance} монет</b>\n\n"
+    if not items:
+        text += "Пока пусто. Заходи позже!"
+        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ В меню", callback_data="back_to_menu")]])
+        return await message.answer(text, reply_markup=kb, parse_mode="HTML")
+    kb = []
+    for item in items:
+        kb.append([InlineKeyboardButton(text=f"{item['title']} — {item['price']} монет", callback_data=f"buy_item_{item['id']}")])
+    kb.append([InlineKeyboardButton(text="⬅️ В меню", callback_data="back_to_menu")])
+    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
 
 # --- Inline-кнопки ---
 @router.callback_query(F.data == "back_to_menu")
@@ -64,24 +90,20 @@ async def back_to_menu(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "menu_trading")
 async def menu_trading(callback: CallbackQuery):
-    text = "📈 <b>ТРЕЙДИНГ</b>\n\nАнализ, торговля и учет твоих сделок."
-    await safe_edit(callback.message, text, reply_markup=trading_menu_kb())
+    await safe_edit(callback.message, "📈 <b>ТРЕЙДИНГ</b>\n\nАнализ, торговля и учет твоих сделок.", reply_markup=trading_menu_kb())
     await callback.answer()
 
 @router.callback_query(F.data == "menu_learning")
 async def menu_learning(callback: CallbackQuery):
-    text = "📚 <b>ОБУЧЕНИЕ И АНАЛИТИКА</b>\n\nСтратегии, книги и новости."
-    await safe_edit(callback.message, text, reply_markup=learning_menu_kb())
+    await safe_edit(callback.message, "📚 <b>ОБУЧЕНИЕ И АНАЛИТИКА</b>\n\nСтратегии, книги и новости.", reply_markup=learning_menu_kb())
     await callback.answer()
 
 @router.callback_query(F.data == "menu_activities")
 async def menu_activities(callback: CallbackQuery):
-    text = "🎮 <b>АКТИВНОСТИ</b>\n\nБонусы, магазин и рефералы."
-    await safe_edit(callback.message, text, reply_markup=activities_menu_kb())
+    await safe_edit(callback.message, "🎮 <b>АКТИВНОСТИ</b>\n\nБонусы, магазин и рефералы.", reply_markup=activities_menu_kb())
     await callback.answer()
 
 @router.callback_query(F.data == "menu_profile")
 async def menu_profile(callback: CallbackQuery):
-    text = "💎 <b>ПРОФИЛЬ</b>\n\nПодписка, настройки и помощь."
-    await safe_edit(callback.message, text, reply_markup=profile_menu_kb())
+    await safe_edit(callback.message, "💎 <b>ПРОФИЛЬ</b>\n\nПодписка, настройки и помощь.", reply_markup=profile_menu_kb())
     await callback.answer()

@@ -7,28 +7,22 @@ from services.indicators import ema, rsi
 
 logger = logging.getLogger(__name__)
 
-def generate_chart_image(symbol: str, timeframe: str = "1h") -> io.BytesIO | None:
+async def generate_chart_image(symbol: str, timeframe: str = "1h") -> io.BytesIO | None:
     """Генерирует красивый график с EMA и RSI."""
     try:
-        # fetch_ohlcv синхронная (использует requests/ccxt), но для простоты вызываем синхронно
-        # В реальности ccxt асинхронный, поэтому используем asyncio.run, если нужно, но тут упростим.
-        import asyncio
-        df = asyncio.run(fetch_ohlcv(symbol, timeframe, limit=100))
+        df = await fetch_ohlcv(symbol, timeframe, limit=100)
         if df is None or df.empty:
             return None
 
         df.set_index("ts", inplace=True)
         
-        # Считаем индикаторы
         df["EMA_50"] = ema(df["close"], 50)
         df["EMA_200"] = ema(df["close"], 200)
         df["RSI"] = rsi(df["close"], 14)
 
-        # Настройки стиля (темная тема)
         mc = mpf.make_marketcolors(up='#22c55e', down='#ef4444', edge='inherit', wick='inherit', volume='in')
         style = mpf.make_mpf_style(marketcolors=mc, base_mpf_style='nightclouds', gridstyle=':', y_on_right=True)
 
-        # Дополнительные графики (EMA и RSI)
         apds = [
             mpf.make_addplot(df["EMA_50"], color='#3b82f6', width=1.5, label='EMA 50'),
             mpf.make_addplot(df["EMA_200"], color='#eab308', width=1.5, label='EMA 200'),
